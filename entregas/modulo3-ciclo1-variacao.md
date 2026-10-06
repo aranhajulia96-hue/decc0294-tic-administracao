@@ -47,3 +47,7 @@ Referência associada: Robert N. Anthony com Vijay Govindarajan, em Sistemas de 
 
 - Texto 1: mais fiel à redação original de Anthony e mais específico nos instrumentos orçamentários brasileiros.
 - Texto 2: mais completo para organização pública, por incluir a dimensão legal e democrática e por citar a obra de referência mais atualizada.
+
+## 6. Julgamento final
+
+O segundo texto está mais correto. Ambos definem bem o controle gerencial, mas só o segundo inclui a obrigação de seguir a lei, ser transparente e prestar contas, que é essencial no setor público.

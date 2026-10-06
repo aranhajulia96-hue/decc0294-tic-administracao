@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard RH interativo (D3.js) — estilo Apple</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",Calibri,Arial,sans-serif;background:#f5f5f7;color:#1d1d1f;padding-bottom:60px}
+header{background:#000;color:#fff;padding:28px 40px}
+header h1{font-size:26px}header h1 span{color:#86868b;font-weight:400}
+header p{color:#a1a1a6;margin-top:6px;font-size:14px}
+.filete{height:8px;background:linear-gradient(90deg,#0071e3,#a259ff,#ff6482)}
+main{max-width:1180px;margin:24px auto;padding:0 20px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.card{background:#fff;border-radius:14px;padding:16px 18px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.card .k{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#0071e3;font-weight:700}
+.card .v{font-size:30px;font-weight:700}.card .s{font-size:13px;color:#6e6e73}
+.controls{background:#fff;border-radius:14px;padding:14px 18px;margin-top:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.controls select,.controls input{padding:9px 12px;border:1px solid #d2d2d7;border-radius:9px;font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.bloco{background:#fff;border-radius:14px;padding:18px 20px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.bloco h2{font-size:17px;margin-bottom:4px}.bloco p.sub{font-size:13px;color:#6e6e73;margin-bottom:10px}
+.bar{fill:#0071e3;cursor:pointer;transition:opacity .2s}.bar:hover{opacity:.75}
+.axis text{font-size:12px}.tip{position:fixed;pointer-events:none;background:#1d1d1f;color:#fff;padding:8px 11px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .15s;z-index:99}
+.dot{stroke:#fff;stroke-width:1;cursor:pointer;opacity:.85}.dot:hover{opacity:1;stroke:#000}
+.legend{font-size:12px;color:#555;margin-top:8px}
+footer{max-width:1180px;margin:18px auto 0;padding:0 20px;font-size:13px;color:#6e6e73}
+.aviso{background:#fffbe6;border:1px solid #e8c547;padding:12px 16px;border-radius:12px;margin-top:16px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="filete"></div>
+<header>
+<h1>🍎 Dashboard RH <span>— D3.js interativo (dados fictícios)</span></h1>
+<p>DECC0294 · UFMA · N=600 · turnover 22.3% · salário médio R$ 11.726 · satisfação 4.3/5 · Passe o mouse, clique e filtre</p>
+</header>
+<main>
+<div class="cards">
+<div class="card"><div class="k">Funcionários</div><div class="v">600</div><div class="s">8 departamentos</div></div>
+<div class="card"><div class="k">Turnover 2025</div><div class="v">22.3%</div><div class="s">134 saídas</div></div>
+<div class="card"><div class="k">Salário médio</div><div class="v">R$ 11.726</div><div class="s">mensal fictício</div></div>
+<div class="card"><div class="k">Satisfação média</div><div class="v">4.3/5</div><div class="s">clique nas barras p/ detalhar</div></div>
+</div>
+<div class="controls">
+<label><strong>Departamento:</strong></label>
+<select id="fDepto"><option value="TODOS">Todos</option></select>
+<label><strong>Buscar cargo:</strong></label>
+<input id="fBusca" type="search" placeholder="ex. Genius, Gerente...">
+<span id="cont" style="font-size:13px;color:#666"></span>
+</div>
+<div class="grid">
+<div class="bloco"><h2>1. Turnover por departamento (%)</h2><p class="sub">Clique numa barra para filtrar o scatter abaixo</p><div id="g1"></div></div>
+<div class="bloco"><h2>2. Salário médio por nível (R$)</h2><p class="sub">Passe o mouse para ver headcount e turnover</p><div id="g2"></div></div>
+</div>
+<div class="grid">
+<div class="bloco"><h2>3. Turnover por satisfação</h2><p class="sub">Quanto menor a nota, maior a saída</p><div id="g3"></div></div>
+<div class="bloco"><h2>4. Salário × Satisfação (amostra 120)</h2><p class="sub">Cor = saiu em 2025 (vermelho) / ficou (azul). Tamanho = horas extras</p><div id="g4"></div><p class="legend">● vermelho = saiu &nbsp; ● azul = ficou &nbsp; | &nbsp; Use o filtro de departamento acima</p></div>
+</div>
+<div class="aviso">⚠️ <strong>Dados 100% simulados</strong> (seed 42). Biblioteca: <strong>D3.js v7 via CDN</strong> — precisa de internet na primeira abertura. Para uso offline, baixe o d3.min.js na mesma pasta. Fonte: <code>dados/rh-apple-sim.csv</code>.</div>
+</main>
+<footer>Gerado em 29/09/2026 · Para refazer: módulos 6–8 · <span id="rodape"></span></footer>
+<div class="tip" id="tip"></div>
+<script>
+const DATA = {"por_depto": [{"depto": "Design e Experiencia (UI/UX)", "n": 32, "sal": 13200, "sat": 4.62, "turn": 9.4}, {"depto": "Engenharia de Software", "n": 121, "sal": 17935, "sat": 4.53, "turn": 14.9}, {"depto": "Financas, RH e Juridico", "n": 53, "sal": 14377, "sat": 4.55, "turn": 17.0}, {"depto": "Hardware e Design de Produto", "n": 57, "sal": 16589, "sat": 4.51, "turn": 12.3}, {"depto": "Marketing e Vendas Corporativas", "n": 29, "sal": 17748, "sat": 4.48, "turn": 10.3}, {"depto": "Operacoes e Supply Chain", "n": 49, "sal": 16245, "sat": 4.51, "turn": 14.3}, {"depto": "Suporte - AppleCare", "n": 70, "sal": 7431, "sat": 4.2, "turn": 21.4}, {"depto": "Varejo - Loja (Apple Store)", "n": 189, "sal": 4788, "sat": 3.87, "turn": 38.1}], "por_nivel": [{"nivel": "Junior", "n": 166, "sal": 5578, "turn": 25.9}, {"nivel": "Pleno", "n": 186, "sal": 9579, "turn": 19.4}, {"nivel": "Senior", "n": 110, "sal": 12122, "turn": 27.3}, {"nivel": "Lead", "n": 22, "sal": 22795, "turn": 18.2}, {"nivel": "Gerente", "n": 116, "sal": 21494, "turn": 18.1}], "por_sat": [{"sat": "2", "n": 2, "turn": 50.0}, {"sat": "3", "n": 75, "turn": 49.3}, {"sat": "4", "n": 274, "turn": 25.5}, {"sat": "5", "n": 249, "turn": 10.4}], "scatter": [{"sal": 11200, "sat": 4, "extra": 17, "depto": "Suporte - AppleCare", "saiu": "sim", "cargo": "Supervisor Suporte"}, {"sal": 8200, "sat": 4, "extra": 11, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Atendente Suporte Pl"}, {"sal": 12900, "sat": 5, "extra": 0, "depto": "Financas, RH e Juridico", "saiu": "nao", "cargo": "Analista RH"}, {"sal": 7400, "sat": 5, "extra": 3, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Jr"}, {"sal": 28900, "sat": 5, "extra": 0, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 6400, "sat": 5, "extra": 8, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Jr"}, {"sal": 6600, "sat": 3, "extra": 11, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Gerente de Loja"}, {"sal": 31000, "sat": 4, "extra": 13, "depto": "Financas, RH e Juridico", "saiu": "nao", "cargo": "Gerente Financas/RH"}, {"sal": 3800, "sat": 3, "extra": 22, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Genius (Suporte Loja)"}, {"sal": 27000, "sat": 5, "extra": 5, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Tech Lead"}, {"sal": 17100, "sat": 4, "extra": 2, "depto": "Design e Experiencia (UI/UX)", "saiu": "nao", "cargo": "Designer Sr"}, {"sal": 17800, "sat": 4, "extra": 4, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Sr"}, {"sal": 17700, "sat": 5, "extra": 0, "depto": "Design e Experiencia (UI/UX)", "saiu": "nao", "cargo": "Designer Sr"}, {"sal": 27000, "sat": 5, "extra": 10, "depto": "Financas, RH e Juridico", "saiu": "nao", "cargo": "Gerente Financas/RH"}, {"sal": 17100, "sat": 5, "extra": 2, "depto": "Design e Experiencia (UI/UX)", "saiu": "nao", "cargo": "Designer Sr"}, {"sal": 5000, "sat": 4, "extra": 1, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Especialista Vendas"}, {"sal": 4500, "sat": 4, "extra": 7, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Estoquista"}, {"sal": 4500, "sat": 4, "extra": 8, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Especialista Vendas"}, {"sal": 10700, "sat": 5, "extra": 0, "depto": "Operacoes e Supply Chain", "saiu": "nao", "cargo": "Analista Logistica"}, {"sal": 7200, "sat": 5, "extra": 1, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Jr"}, {"sal": 13000, "sat": 5, "extra": 6, "depto": "Financas, RH e Juridico", "saiu": "nao", "cargo": "Analista Financeiro"}, {"sal": 3800, "sat": 4, "extra": 3, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Especialista Vendas"}, {"sal": 5000, "sat": 4, "extra": 4, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Especialista Vendas"}, {"sal": 27500, "sat": 4, "extra": 12, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 30500, "sat": 5, "extra": 6, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 3800, "sat": 5, "extra": 0, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Especialista Vendas"}, {"sal": 6400, "sat": 3, "extra": 14, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Gerente de Loja"}, {"sal": 4800, "sat": 5, "extra": 0, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Genius (Suporte Loja)"}, {"sal": 4700, "sat": 4, "extra": 8, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Especialista Vendas"}, {"sal": 6400, "sat": 4, "extra": 14, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Gerente de Loja"}, {"sal": 9100, "sat": 5, "extra": 0, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Supervisor Suporte"}, {"sal": 5400, "sat": 5, "extra": 1, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Atendente Suporte Jr"}, {"sal": 4200, "sat": 5, "extra": 2, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Estoquista"}, {"sal": 4400, "sat": 5, "extra": 4, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Genius (Suporte Loja)"}, {"sal": 26100, "sat": 4, "extra": 9, "depto": "Financas, RH e Juridico", "saiu": "sim", "cargo": "Gerente Financas/RH"}, {"sal": 5400, "sat": 4, "extra": 2, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Gerente de Loja"}, {"sal": 12100, "sat": 5, "extra": 7, "depto": "Financas, RH e Juridico", "saiu": "nao", "cargo": "Analista Financeiro"}, {"sal": 4800, "sat": 5, "extra": 1, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Estoquista"}, {"sal": 21200, "sat": 5, "extra": 7, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Sr"}, {"sal": 7700, "sat": 4, "extra": 12, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Atendente Suporte Pl"}, {"sal": 26000, "sat": 4, "extra": 7, "depto": "Financas, RH e Juridico", "saiu": "sim", "cargo": "Gerente Financas/RH"}, {"sal": 5800, "sat": 3, "extra": 15, "depto": "Suporte - AppleCare", "saiu": "sim", "cargo": "Atendente Suporte Jr"}, {"sal": 6200, "sat": 5, "extra": 4, "depto": "Financas, RH e Juridico", "saiu": "nao", "cargo": "Advogado Jr"}, {"sal": 9000, "sat": 3, "extra": 16, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Supervisor Suporte"}, {"sal": 10700, "sat": 4, "extra": 10, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Pl"}, {"sal": 4300, "sat": 4, "extra": 10, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Especialista Vendas"}, {"sal": 5600, "sat": 4, "extra": 11, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Atendente Suporte Jr"}, {"sal": 3900, "sat": 4, "extra": 4, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Genius (Suporte Loja)"}, {"sal": 4700, "sat": 5, "extra": 4, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Genius (Suporte Loja)"}, {"sal": 7600, "sat": 4, "extra": 7, "depto": "Financas, RH e Juridico", "saiu": "nao", "cargo": "Advogado Jr"}, {"sal": 5100, "sat": 5, "extra": 5, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Especialista Vendas"}, {"sal": 9700, "sat": 3, "extra": 15, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Supervisor Suporte"}, {"sal": 20900, "sat": 4, "extra": 7, "depto": "Design e Experiencia (UI/UX)", "saiu": "nao", "cargo": "Designer Sr"}, {"sal": 5800, "sat": 4, "extra": 2, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Atendente Suporte Jr"}, {"sal": 9300, "sat": 4, "extra": 9, "depto": "Suporte - AppleCare", "saiu": "sim", "cargo": "Supervisor Suporte"}, {"sal": 6200, "sat": 4, "extra": 7, "depto": "Suporte - AppleCare", "saiu": "sim", "cargo": "Atendente Suporte Pl"}, {"sal": 19200, "sat": 4, "extra": 0, "depto": "Hardware e Design de Produto", "saiu": "sim", "cargo": "Eng. Hardware Sr"}, {"sal": 7500, "sat": 5, "extra": 5, "depto": "Financas, RH e Juridico", "saiu": "nao", "cargo": "Advogado Jr"}, {"sal": 26000, "sat": 4, "extra": 5, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 5500, "sat": 4, "extra": 4, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Lider de Loja"}, {"sal": 12900, "sat": 4, "extra": 6, "depto": "Design e Experiencia (UI/UX)", "saiu": "nao", "cargo": "Designer Pl"}, {"sal": 29400, "sat": 5, "extra": 0, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 4600, "sat": 4, "extra": 17, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Estoquista"}, {"sal": 25100, "sat": 5, "extra": 7, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 23500, "sat": 4, "extra": 0, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Tech Lead"}, {"sal": 27800, "sat": 5, "extra": 2, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 21300, "sat": 5, "extra": 5, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Tech Lead"}, {"sal": 4300, "sat": 4, "extra": 2, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Genius (Suporte Loja)"}, {"sal": 4900, "sat": 3, "extra": 8, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Especialista Vendas"}, {"sal": 7400, "sat": 5, "extra": 1, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Jr"}, {"sal": 5100, "sat": 4, "extra": 6, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Lider de Loja"}, {"sal": 4300, "sat": 4, "extra": 6, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Especialista Vendas"}, {"sal": 4900, "sat": 4, "extra": 4, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Gerente de Loja"}, {"sal": 12900, "sat": 5, "extra": 0, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Pl"}, {"sal": 3700, "sat": 4, "extra": 13, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Genius (Suporte Loja)"}, {"sal": 10500, "sat": 4, "extra": 4, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Pl"}, {"sal": 24300, "sat": 5, "extra": 1, "depto": "Hardware e Design de Produto", "saiu": "nao", "cargo": "Gerente Hardware"}, {"sal": 23300, "sat": 4, "extra": 0, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Tech Lead"}, {"sal": 4700, "sat": 4, "extra": 18, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Atendente Suporte Jr"}, {"sal": 6100, "sat": 5, "extra": 0, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Gerente de Loja"}, {"sal": 11800, "sat": 4, "extra": 3, "depto": "Hardware e Design de Produto", "saiu": "nao", "cargo": "Eng. Hardware Pl"}, {"sal": 25100, "sat": 5, "extra": 9, "depto": "Design e Experiencia (UI/UX)", "saiu": "sim", "cargo": "Lead Designer"}, {"sal": 5000, "sat": 4, "extra": 11, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Genius (Suporte Loja)"}, {"sal": 23900, "sat": 5, "extra": 0, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 4600, "sat": 4, "extra": 7, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Genius (Suporte Loja)"}, {"sal": 4300, "sat": 4, "extra": 12, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Lider de Loja"}, {"sal": 12200, "sat": 4, "extra": 3, "depto": "Hardware e Design de Produto", "saiu": "nao", "cargo": "Eng. Hardware Pl"}, {"sal": 4700, "sat": 4, "extra": 4, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Especialista Vendas"}, {"sal": 17900, "sat": 5, "extra": 0, "depto": "Operacoes e Supply Chain", "saiu": "nao", "cargo": "Coordenador Operacoes"}, {"sal": 24200, "sat": 4, "extra": 3, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 11300, "sat": 3, "extra": 12, "depto": "Operacoes e Supply Chain", "saiu": "nao", "cargo": "Analista Supply Pl"}, {"sal": 24000, "sat": 5, "extra": 5, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 28500, "sat": 5, "extra": 4, "depto": "Hardware e Design de Produto", "saiu": "nao", "cargo": "Gerente Hardware"}, {"sal": 10000, "sat": 4, "extra": 8, "depto": "Hardware e Design de Produto", "saiu": "nao", "cargo": "Eng. Hardware Pl"}, {"sal": 6300, "sat": 4, "extra": 6, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Atendente Suporte Pl"}, {"sal": 12000, "sat": 5, "extra": 0, "depto": "Design e Experiencia (UI/UX)", "saiu": "sim", "cargo": "Designer Pl"}, {"sal": 24800, "sat": 4, "extra": 4, "depto": "Marketing e Vendas Corporativas", "saiu": "nao", "cargo": "Gerente Marketing"}, {"sal": 20800, "sat": 5, "extra": 4, "depto": "Engenharia de Software", "saiu": "sim", "cargo": "Eng. Software Sr"}, {"sal": 4800, "sat": 3, "extra": 4, "depto": "Varejo - Loja (Apple Store)", "saiu": "nao", "cargo": "Especialista Vendas"}, {"sal": 5500, "sat": 4, "extra": 14, "depto": "Varejo - Loja (Apple Store)", "saiu": "sim", "cargo": "Gerente de Loja"}, {"sal": 20600, "sat": 4, "extra": 5, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Tech Lead"}, {"sal": 11300, "sat": 4, "extra": 8, "depto": "Operacoes e Supply Chain", "saiu": "sim", "cargo": "Analista Supply Pl"}, {"sal": 5500, "sat": 4, "extra": 12, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Atendente Suporte Jr"}, {"sal": 27500, "sat": 3, "extra": 15, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 13100, "sat": 4, "extra": 7, "depto": "Operacoes e Supply Chain", "saiu": "sim", "cargo": "Analista Logistica"}, {"sal": 7200, "sat": 5, "extra": 0, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Jr"}, {"sal": 24800, "sat": 4, "extra": 4, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Tech Lead"}, {"sal": 5900, "sat": 4, "extra": 6, "depto": "Design e Experiencia (UI/UX)", "saiu": "nao", "cargo": "Designer Jr"}, {"sal": 6600, "sat": 5, "extra": 3, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Atendente Suporte Pl"}, {"sal": 10400, "sat": 5, "extra": 6, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Pl"}, {"sal": 10800, "sat": 4, "extra": 11, "depto": "Financas, RH e Juridico", "saiu": "nao", "cargo": "Analista Financeiro"}, {"sal": 10000, "sat": 5, "extra": 0, "depto": "Operacoes e Supply Chain", "saiu": "nao", "cargo": "Analista Supply Pl"}, {"sal": 27700, "sat": 4, "extra": 9, "depto": "Operacoes e Supply Chain", "saiu": "nao", "cargo": "Gerente Operacoes"}, {"sal": 18800, "sat": 4, "extra": 10, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Eng. Software Sr"}, {"sal": 26900, "sat": 4, "extra": 9, "depto": "Engenharia de Software", "saiu": "nao", "cargo": "Gerente Engenharia"}, {"sal": 24500, "sat": 5, "extra": 0, "depto": "Operacoes e Supply Chain", "saiu": "nao", "cargo": "Gerente Operacoes"}, {"sal": 11300, "sat": 4, "extra": 6, "depto": "Marketing e Vendas Corporativas", "saiu": "nao", "cargo": "Executivo Vendas B2B"}, {"sal": 6500, "sat": 5, "extra": 3, "depto": "Hardware e Design de Produto", "saiu": "nao", "cargo": "Eng. Hardware Jr"}, {"sal": 11300, "sat": 5, "extra": 8, "depto": "Financas, RH e Juridico", "saiu": "nao", "cargo": "Analista Financeiro"}, {"sal": 5000, "sat": 4, "extra": 9, "depto": "Suporte - AppleCare", "saiu": "nao", "cargo": "Atendente Suporte Jr"}]};
+const fmt = v => v.toLocaleString('pt-BR');
+const tip = d3.select('#tip');
+function showTip(html,event){ tip.html(html).style('opacity',1).style('left',(event.clientX+14)+'px').style('top',(event.clientY+14)+'px'); }
+function hideTip(){ tip.style('opacity',0); }
+
+// filtro deptos
+const sel = d3.select('#fDepto');
+DATA.por_depto.forEach(d=> sel.append('option').text(d.depto).attr('value',d.depto));
+let filtroDepto='TODOS', filtroBusca='';
+sel.on('change', function(){ filtroDepto=this.value; desenharScatter(); });
+d3.select('#fBusca').on('input', function(){ filtroBusca=this.value.toLowerCase(); desenharScatter(); });
+
+// ---- G1 turnover depto (horizontal) ----
+(function(){
+ const W=480,H=300,M={t:10,r:50,b:30,l:210};
+ const svg=d3.select('#g1').append('svg').attr('viewBox',`0 0 ${W} ${H}`).attr('width','100%');
+ const data=[...DATA.por_depto].sort((a,b)=>a.turn-b.turn);
+ const y=d3.scaleBand().domain(data.map(d=>d.depto)).range([M.t,H-M.b]).padding(.18);
+ const x=d3.scaleLinear().domain([0,d3.max(data,d=>d.turn)*1.15]).range([M.l,W-M.r]);
+ svg.append('g').attr('transform',`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(5).tickFormat(d=>d+'%'));
+ svg.append('g').attr('transform',`translate(${M.l},0)`).call(d3.axisLeft(y).tickFormat(d=>d.length>30?d.slice(0,30)+'…':d));
+ svg.selectAll('rect').data(data).join('rect').attr('class','bar')
+  .attr('y',d=>y(d.depto)).attr('x',M.l).attr('height',y.bandwidth())
+  .attr('width',d=>x(d.turn)-M.l).attr('fill',d=>d.turn>25?'#ff3b30':'#0071e3')
+  .on('mousemove',(e,d)=>showTip(`<b>${d.depto}</b><br>Turnover: ${d.turn}%<br>N: ${d.n} · Sal médio R$ ${fmt(d.sal)}<br><i>clique p/ filtrar</i>`,e))
+  .on('mouseleave',hideTip)
+  .on('click',(e,d)=>{ filtroDepto=(filtroDepto===d.depto?'TODOS':d.depto); sel.property('value',filtroDepto); desenharScatter(); });
+ svg.selectAll('text.val').data(data).join('text').attr('class','val')
+  .attr('x',d=>x(d.turn)+6).attr('y',d=>y(d.depto)+y.bandwidth()/2+4).text(d=>d.turn+'%').style('font-size','12px').style('font-weight','700');
+})();
+
+// ---- G2 salario nivel ----
+(function(){
+ const W=480,H=300,M={t:20,r:20,b:60,l:70};
+ const svg=d3.select('#g2').append('svg').attr('viewBox',`0 0 ${W} ${H}`).attr('width','100%');
+ const data=DATA.por_nivel;
+ const x=d3.scaleBand().domain(data.map(d=>d.nivel)).range([M.l,W-M.r]).padding(.25);
+ const y=d3.scaleLinear().domain([0,d3.max(data,d=>d.sal)*1.1]).range([H-M.b,M.t]);
+ svg.append('g').attr('transform',`translate(0,${H-M.b})`).call(d3.axisBottom(x));
+ svg.append('g').attr('transform',`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(d=>'R$ '+(d/1000)+'k'));
+ svg.selectAll('rect').data(data).join('rect').attr('class','bar')
+  .attr('x',d=>x(d.nivel)).attr('y',d=>y(d.sal)).attr('width',x.bandwidth()).attr('height',d=>H-M.b-y(d.sal)).attr('fill','#34c759')
+  .on('mousemove',(e,d)=>showTip(`<b>${d.nivel}</b><br>Sal médio R$ ${fmt(d.sal)}<br>N: ${d.n} · Turnover ${d.turn}%`,e))
+  .on('mouseleave',hideTip);
+})();
+
+// ---- G3 turnover por satisfacao ----
+(function(){
+ const W=480,H=300,M={t:20,r:20,b:50,l:55};
+ const svg=d3.select('#g3').append('svg').attr('viewBox',`0 0 ${W} ${H}`).attr('width','100%');
+ const data=DATA.por_sat;
+ const x=d3.scaleBand().domain(data.map(d=>d.sat)).range([M.l,W-M.r]).padding(.3);
+ const y=d3.scaleLinear().domain([0,d3.max(data,d=>d.turn)*1.15]).range([H-M.b,M.t]);
+ svg.append('g').attr('transform',`translate(0,${H-M.b})`).call(d3.axisBottom(x).tickFormat(d=>'Nota '+d));
+ svg.append('g').attr('transform',`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(d=>d+'%'));
+ svg.selectAll('rect').data(data).join('rect').attr('class','bar')
+  .attr('x',d=>x(d.sat)).attr('y',d=>y(d.turn)).attr('width',x.bandwidth()).attr('height',d=>H-M.b-y(d.turn))
+  .attr('fill',d=>+d.sat<=2?'#ff3b30':+d.sat==3?'#ff9500':'#0071e3')
+  .on('mousemove',(e,d)=>showTip(`Satisfação <b>${d.sat}</b><br>Turnover: ${d.turn}%<br>N: ${d.n}`,e))
+  .on('mouseleave',hideTip);
+ svg.selectAll('text.v').data(data).join('text').attr('x',d=>x(d.sat)+x.bandwidth()/2).attr('y',d=>y(d.turn)-6)
+  .attr('text-anchor','middle').text(d=>d.turn+'%').style('font-size','12px').style('font-weight','700');
+})();
+
+// ---- G4 scatter ----
+function desenharScatter(){
+ const W=480,H=320,M={t:15,r:25,b:50,l:65};
+ d3.select('#g4').selectAll('*').remove();
+ const svg=d3.select('#g4').append('svg').attr('viewBox',`0 0 ${W} ${H}`).attr('width','100%');
+ let data=DATA.scatter.filter(d=>(filtroDepto==='TODOS'||d.depto===filtroDepto)&&(!filtroBusca||d.cargo.toLowerCase().includes(filtroBusca)));
+ const x=d3.scaleLinear().domain([3000,d3.max(DATA.scatter,d=>d.sal)*1.05]).range([M.l,W-M.r]);
+ const y=d3.scaleLinear().domain([0.5,5.5]).range([H-M.b,M.t]);
+ const r=d3.scaleSqrt().domain([0,30]).range([4,14]);
+ svg.append('g').attr('transform',`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(5).tickFormat(d=>'R$ '+(d/1000)+'k'));
+ svg.append('g').attr('transform',`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(5));
+ svg.selectAll('circle').data(data).join('circle').attr('class','dot')
+  .attr('cx',d=>x(d.sal)).attr('cy',d=>y(d.sat)).attr('r',d=>r(d.extra))
+  .attr('fill',d=>d.saiu==='sim'?'#ff3b30':'#0071e3')
+  .on('mousemove',(e,d)=>showTip(`<b>${d.cargo}</b><br>${d.depto}<br>Sal R$ ${fmt(d.sal)} · Sat ${d.sat}<br>Extras ${d.extra}h · Saiu: ${d.saiu}`,e))
+  .on('mouseleave',hideTip);
+ d3.select('#cont').text(data.length+' pontos exibidos (amostra de 120) · filtro: '+filtroDepto);
+ d3.select('#rodape').text('Filtro atual: '+filtroDepto+' · '+data.length+' pontos.');
+}
+desenharScatter();
+</script>
+</body>
+</html>
