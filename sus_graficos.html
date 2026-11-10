@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SUS — Utilização desde a criação | Dois gráficos, mesmo dado, vieses diferentes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#050510;--panel:rgba(10,12,32,0.72);--cyan:#00f5ff;--magenta:#ff00ff;--green:#39ff14;--orange:#ff6b00;--text:#e6e9ff;--muted:#8a90c9;--border:rgba(0,245,255,0.35)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Rajdhani',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:24px;background-image:radial-gradient(circle at 20% 10%,rgba(255,0,255,0.12),transparent 40%),radial-gradient(circle at 80% 90%,rgba(0,245,255,0.12),transparent 40%)}
+body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(rgba(0,245,255,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,255,0.05) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:1300px;margin:0 auto}
+header{text-align:center;margin-bottom:24px}
+h1{font-family:'Orbitron',sans-serif;font-size:26px;font-weight:900;letter-spacing:2px;background:linear-gradient(90deg,var(--cyan),var(--magenta),var(--green));-webkit-background-clip:text;background-clip:text;color:transparent}
+p.sub{color:var(--muted);margin-top:6px;font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;backdrop-filter:blur(6px);box-shadow:0 0 20px rgba(0,245,255,0.15)}
+.card h2{font-family:'Orbitron',sans-serif;font-size:14px;letter-spacing:1px;margin-bottom:6px}
+.card .tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;letter-spacing:1px;margin-bottom:12px;font-family:'Orbitron',sans-serif}
+.tag.ok{background:rgba(57,255,20,0.12);color:var(--green);border:1px solid var(--green)}
+.tag.bias{background:rgba(255,107,0,0.12);color:var(--orange);border:1px solid var(--orange)}
+.chart-wrap{position:relative;height:360px}
+.note{margin-top:14px;font-size:13px;color:var(--muted);line-height:1.6}
+.note b{color:var(--text)}
+.bias-list{margin-top:10px;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.7}
+.bias-list li{margin-bottom:4px}
+.bias-list li b{color:var(--orange)}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>SUS — Utilização desde a criação (1990–2024)</h1>
+  <p class="sub">Mesmos dados subjacentes, duas leituras: uma honesta e uma com viés de distorção</p>
+</header>
+
+<div class="grid">
+  <div class="card">
+    <h2>Gráfico A — Leitura honesta</h2>
+    <span class="tag ok">ESCALA INTEGRAL (0–1300)</span>
+    <div class="chart-wrap"><canvas id="chartHonest"></canvas></div>
+    <p class="note"><b>Dados:</b> atendimentos ambulatoriais no SUS (milhões/ano), série ilustrativa 1990–2024. Eixo Y inicia em 0, preservando a proporção real do crescimento.</p>
+  </div>
+  <div class="card">
+    <h2>Gráfico B — Leitura com viés de distorção</h2>
+    <span class="tag bias">ESCALA TRUNCADA (900–1250)</span>
+    <div class="chart-wrap"><canvas id="chartBias"></canvas></div>
+    <p class="note"><b>Mesmos dados,</b> mas eixo Y truncado para exagerar o crescimento recente e título sensacionalista.</p>
+    <ul class="bias-list">
+      <li><b>Eixo Y não inicia em 0</b> — amplifica visualmente variações pequenas.</li>
+      <li><b>Título tendencioso</b> — "explosão" de atendimentos.</li>
+      <li><b>Omissão do contexto</b> — não mostra população, cobertura nem queda de 2020 (pandemia).</li>
+      <li><b>Preenchimento de área</b> — reforça sensação de crescimento contínuo.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const anos = [1990,1992,1994,1996,1998,2000,2002,2004,2006,2008,2010,2012,2014,2016,2018,2020,2022,2024];
+const atend = [180,210,260,320,390,470,540,620,710,800,890,970,1040,1100,1160,980,1120,1210];
+
+const baseOpts = (minY, maxY, title) => ({
+  responsive:true, maintainAspectRatio:false,
+  plugins:{
+    title:{ display:true, text:title, color:'#e6e9ff', font:{family:'Orbitron',size:12} },
+    legend:{ display:false },
+    tooltip:{ backgroundColor:'rgba(10,12,32,0.95)', borderColor:'#00f5ff', borderWidth:1 }
+  },
+  scales:{
+    x:{ grid:{color:'rgba(0,245,255,0.06)'}, ticks:{color:'#8a90c9'} },
+    y:{ min:minY, max:maxY, grid:{color:'rgba(0,245,255,0.06)'}, ticks:{color:'#8a90c9'} }
+  }
+});
+
+new Chart(document.getElementById('chartHonest'), {
+  type:'line',
+  data:{ labels:anos, datasets:[{ label:'Atendimentos (milhões)', data:atend, borderColor:'#00f5ff', backgroundColor:'rgba(0,245,255,0.15)', tension:0.3, fill:true, pointRadius:3, pointBackgroundColor:'#00f5ff' }] },
+  options: baseOpts(0, 1300, 'Atendimentos ambulatoriais no SUS (milhões/ano)')
+});
+
+new Chart(document.getElementById('chartBias'), {
+  type:'line',
+  data:{ labels:anos, datasets:[{ label:'Atendimentos (milhões)', data:atend, borderColor:'#ff00ff', backgroundColor:'rgba(255,0,255,0.25)', tension:0.3, fill:true, pointRadius:4, pointBackgroundColor:'#ff00ff' }] },
+  options: baseOpts(900, 1250, 'EXPLOSÃO de atendimentos no SUS!')
+});
+</script>
+</body>
+</html>

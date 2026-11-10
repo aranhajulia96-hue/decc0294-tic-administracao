@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales by region: 2009 to 2011 — Slope Chart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#ffffff;color:#1f2937;padding:32px}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-size:22px;font-weight:700;margin-bottom:4px}
+  p.sub{color:#6b7280;font-size:13px;margin-bottom:16px}
+  .chart-wrap{position:relative;height:460px}
+  .callouts{margin-top:20px;display:grid;gap:10px}
+  .callout{background:#f3f4f6;border-left:4px solid #1f2937;padding:10px 14px;border-radius:6px;font-size:14px}
+  .callout.blue{border-left-color:#2563eb}
+  footer{margin-top:16px;color:#9ca3af;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Sales by region: 2009 to 2011</h1>
+  <p class="sub">US$ billion · Source: Sales Dashboard, as of 12/31/09 and 12/31/11</p>
+  <div class="chart-wrap"><canvas id="slope"></canvas></div>
+  <div class="callouts">
+    <div class="callout">Sales in Region A decreased an average of 5% per year between 2009 and 2011.</div>
+    <div class="callout blue">In contrast, sales in Regions D, E, and F increased during the same period.</div>
+  </div>
+  <footer>Reproduced chart</footer>
+</div>
+<script>
+const regions = [
+  { name:'Region A', v09:3.5, v11:3.1, color:'#111827', bold:true },
+  { name:'Region C', v09:3.3, v11:3.4, color:'#9ca3af' },
+  { name:'All Other', v09:2.7, v11:2.8, color:'#9ca3af' },
+  { name:'Region B', v09:2.4, v11:2.6, color:'#2563eb' },
+  { name:'Region D', v09:2.1, v11:2.5, color:'#2563eb' },
+  { name:'Region E', v09:0.9, v11:1.4, color:'#2563eb', blueLabel:true },
+  { name:'Region F', v09:0.7, v11:1.1, color:'#2563eb', blueLabel:true },
+];
+
+const datasets = regions.map(r=>({
+  label: r.name,
+  data: [{x:0,y:r.v09},{x:1,y:r.v11}],
+  borderColor: r.color,
+  backgroundColor: r.color,
+  borderWidth: r.bold?3:2,
+  pointRadius: 4,
+  pointBackgroundColor: r.color,
+  tension: 0,
+  fill: false,
+}));
+
+Chart.register(ChartDataLabels);
+new Chart(document.getElementById('slope'), {
+  type:'line',
+  data:{ datasets },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{ display:false },
+      tooltip:{ callbacks:{ label: ctx => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(1)}B` } },
+      datalabels:{
+        color: (ctx)=> ctx.dataset.borderColor,
+        font:{ weight:'bold', size:12 },
+        formatter: (v,ctx)=> ctx.dataIndex===0 ? `${ctx.dataset.label}  $${v.y.toFixed(1)}` : `$${v.y.toFixed(1)}`,
+        align: (ctx)=> ctx.dataIndex===0 ? 'left' : 'right',
+        anchor: (ctx)=> ctx.dataIndex===0 ? 'start' : 'end',
+        offset: 8,
+        clamp:true
+      }
+    },
+    scales:{
+      x:{ type:'linear', min:0, max:1, ticks:{ callback: v => v===0?'2009':(v===1?'2011':''), color:'#374151', font:{weight:'bold'} }, grid:{display:false}, border:{display:true} },
+      y:{ min:0, max:4, ticks:{ callback: v=> v.toFixed(1), color:'#6b7280' }, grid:{color:'rgba(0,0,0,0.06)'}, title:{display:true,text:'US$ billion',color:'#6b7280'} }
+    },
+    layout:{ padding:{ left:20, right:90, top:10, bottom:10 } }
+  }
+});
+</script>
+</body>
+</html>
